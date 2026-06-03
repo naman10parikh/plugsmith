@@ -1,0 +1,18 @@
+# Plugsmith
+
+> Private. Plugin emitter — turns any repo's skills+hooks+commands+MCP into a .claude-plugin/marketplace.json bundle.
+
+## Documentation
+
+- [README.md](README.md): Quickstart, architecture, what plugsmith does and doesn't do.
+- [AGENTS.md](AGENTS.md): Repo structure + agent operating protocol.
+- [CLAUDE.md](CLAUDE.md): Operating handbook — the Four Things, TODOS protocol, commit convention.
+- [identity/SOUL.md](identity/SOUL.md): Who plugsmith is — identity, personality, boundaries.
+- [TODOS.md](TODOS.md): Task queue.
+
+## Notes
+
+- This file follows the llms.txt convention (https://llmstxt.org) so AI agents can
+  discover this repo's docs without scraping.
+- The ONE owned artifact is `src/builder.ts`. Everything else serves or tests it.
+- Provisional name: chairman must confirm "plugsmith" or rename before `gh repo create`.
