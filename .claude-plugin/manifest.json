@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "1.0.0",
+  "name": "plugsmith",
+  "version": "0.1.0",
+  "description": "Turns any repo's skills+hooks+commands+MCP into a .claude-plugin/marketplace.json bundle.",
+  "emittedAt": "2026-06-03T00:00:00.000Z",
+  "repoRoot": "~/plugsmith",
+  "skills": [
+    {
+      "name": "build-plugin",
+      "path": "~/plugsmith/.claude/skills/build-plugin",
+      "description": "Scan a repo's harness surface and emit `.claude-plugin/manifest.json` + `marketplace.json`.",
+      "triggers": ["build plugin", "emit manifest", "scan repo", "package harness", "generate plugin bundle", "run plugsmith"]
+    },
+    {
+      "name": "validate-manifest",
+      "path": "~/plugsmith/.claude/skills/validate-manifest",
+      "description": "Validate an existing `.claude-plugin/manifest.json` against the plugsmith schema and report any issues.",
+      "triggers": ["validate manifest", "check manifest", "lint plugin", "verify plugin bundle", "manifest errors"]
+    }
+  ],
+  "commands": [],
+  "hooks": [],
+  "mcpServers": [
+    {
+      "name": "plugsmith",
+      "command": "node",
+      "args": ["dist/mcp-server.js"]
+    }
+  ],
+  "warnings": []
+}

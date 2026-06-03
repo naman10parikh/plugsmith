@@ -18,6 +18,7 @@ import type {
   PluginHook,
   PluginMcp,
 } from "./types.js";
+import { logBuildRun } from "./run-log.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -319,6 +320,7 @@ export interface ScanResult {
  */
 export function buildPlugin(repoRoot: string, dry = false): ScanResult {
   const absRoot = path.resolve(repoRoot);
+  const startMs = Date.now();
 
   if (!fs.existsSync(absRoot)) {
     throw new Error(`repoRoot does not exist: ${absRoot}`);
@@ -388,6 +390,9 @@ export function buildPlugin(repoRoot: string, dry = false): ScanResult {
       "utf-8",
     );
   }
+
+  // Observability: append a JSONL entry to logs/build-runs.jsonl
+  logBuildRun({ repoRoot: absRoot, manifest, marketplace, dry, durationMs: Date.now() - startMs });
 
   return { manifest, marketplace, outputDir };
 }
