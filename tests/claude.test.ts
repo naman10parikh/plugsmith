@@ -2,7 +2,8 @@
  * plugsmith/tests/claude.test.ts
  *
  * What Claude Code reads: plugin.json and marketplace.json derivation, name rules, the validator, and the
- * keep-or-replace rule for files a repo already has. The E2B clean room runs only when E2B_API_KEY is set.
+ * keep-or-replace rule for files a repo already has. The E2B clean room runs only with PLUGSMITH_LIVE_E2B=1 and
+ * E2B_API_KEY set, since each run boots a paid sandbox.
  */
 
 import { describe, it, expect } from "vitest";
@@ -130,7 +131,7 @@ describe("clean room", () => {
     }
   });
 
-  it.skipIf(!process.env.E2B_API_KEY)("validates only the files git tracks, inside a fresh E2B microVM", async () => {
+  it.skipIf(!(process.env.PLUGSMITH_LIVE_E2B === "1" && process.env.E2B_API_KEY))("validates only the files git tracks, inside a fresh E2B microVM", async () => {
     const dir = repo({ "package.json": PKG, "skills/one/SKILL.md": "---\nname: one\ndescription: d\n---\n" });
     buildPlugin(dir);
     const git = (...a: string[]) => execFileSync("git", ["-C", dir, ...a], { stdio: "pipe" });

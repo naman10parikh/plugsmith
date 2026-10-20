@@ -37,6 +37,7 @@ Claim → Work → Close:
 - **MCP:** the root `.mcp.json` starts the published server through `npx` (safe for anyone who installs the
   plugin). To use this checkout's own build instead, run `claude --mcp-config .mcp.dev.json`.
 - **Dogfood:** plugsmith's own `.claude-plugin/` is written by plugsmith: `node dist/src/cli.js . --force`.
+- **E2B:** `plugsmith validate --sandbox=e2b` reads `E2B_API_KEY` from the environment. Never print it. `pnpm test` skips the live clean-room test unless `PLUGSMITH_LIVE_E2B=1` is also set, since each run boots a paid sandbox.
 
 ## Reuse (don't rebuild)
 
