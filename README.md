@@ -1,68 +1,200 @@
 # Plugsmith
 
-> Turns any repo's skills + hooks + commands + MCP into a `.claude-plugin/marketplace.json` bundle.
+<!-- fleet:header:start -->
+[![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE) [![Agent-native](https://img.shields.io/badge/agent--native-yes-2f5d8a?style=flat-square)](AGENTS.md) [![MCP server](https://img.shields.io/badge/MCP-server-1e3f60?style=flat-square)](#use-it-from-any-coding-agent) [![Skills](https://img.shields.io/badge/skills-3-2f6b4f?style=flat-square)](skills/)
 
-Plugsmith is a **plugin emitter**: give it any agent-native repo with a `.claude/` directory and it scans
-the harness surface — skills, slash-commands, hooks, MCP servers — and emits a structured
-`.claude-plugin/manifest.json` + `marketplace.json` bundle that Armory or any catalog can consume.
+**Turn any repository into a Claude Code plugin and marketplace.**
 
-## What it does
+Plugsmith is an agent-native, recursively self-improving agent employee whose job is plugins. Coding agents use it through its skills, its MCP server and its command line. It improves itself through its own evals and a scheduled improvement loop, and a person reviews every change.
+
+[AGENTS.md](AGENTS.md) · [llms.txt](llms.txt) · [Skills](skills/) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [All projects](https://github.com/naman10parikh)
+<!-- fleet:header:end -->
+
+Plugsmith turns any repository with skills, agents, commands, hooks or MCP servers into a Claude Code plugin. It
+writes `.claude-plugin/plugin.json` and a one-plugin `marketplace.json`, so anyone installs the repo with two
+`/plugin` lines, and it checks the result the way Claude Code's own validator does. It is for anyone who built a
+harness in a repository and wants others to install it in one step.
+
+<!-- fleet:use:start -->
+## Use it from any coding agent
+
+**Claude Code**: the plugin brings the skills, sub-agents, hooks and MCP server.
 
 ```
-any-repo/
-  .claude/skills/deep-think/SKILL.md
-  .claude/skills/playwright-cli/SKILL.md
+/plugin marketplace add naman10parikh/plugsmith
+/plugin install plugsmith@plugsmith
+```
+
+**Its MCP server**, in any MCP client:
+
+```bash
+claude mcp add --transport stdio plugsmith -- npx -y -p github:naman10parikh/plugsmith plugsmith-mcp
+codex mcp add plugsmith -- npx -y -p github:naman10parikh/plugsmith plugsmith-mcp
+```
+
+Cursor (`.cursor/mcp.json`), Gemini CLI (`.gemini/settings.json`) and most other clients take the same command as JSON:
+
+```json
+{
+  "mcpServers": {
+    "plugsmith": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "-p",
+        "github:naman10parikh/plugsmith",
+        "plugsmith-mcp"
+      ]
+    }
+  }
+}
+```
+
+**Gemini CLI**: the extension brings the context and the MCP server.
+
+```bash
+gemini extensions install https://github.com/naman10parikh/plugsmith
+```
+
+**One skill** (3 in all, in [skills/](skills/)), in any agent that reads Agent Skills:
+
+```bash
+gemini skills install https://github.com/naman10parikh/plugsmith --path skills/build-plugin
+git clone --depth 1 https://github.com/naman10parikh/plugsmith /tmp/plugsmith && cp -r /tmp/plugsmith/skills/build-plugin ~/.claude/skills/
+```
+
+**The command line:**
+
+```bash
+npx -y -p github:naman10parikh/plugsmith plugsmith --help
+```
+
+Codex, Cursor, OpenCode, GitHub Copilot and other agents read [AGENTS.md](AGENTS.md); Claude Code reads [CLAUDE.md](CLAUDE.md) and Gemini CLI reads [GEMINI.md](GEMINI.md), which import it. [llms.txt](llms.txt) maps every surface for agents that read first.
+<!-- fleet:use:end -->
+
+## Quick start
+
+It installs from GitHub; nothing is published to npm. In the repository you want to package:
+
+```bash
+npx -y -p github:naman10parikh/plugsmith plugsmith .          # writes .claude-plugin/plugin.json + marketplace.json
+npx -y -p github:naman10parikh/plugsmith plugsmith validate . --claude
+```
+
+Then, in Claude Code, anyone can install it:
+
+```
+/plugin marketplace add <owner>/<repo>
+/plugin install <name>@<name>
+```
+
+On the bundled test repository:
+
+```bash
+git clone https://github.com/naman10parikh/plugsmith && cd plugsmith
+pnpm install && pnpm build
+pnpm test && pnpm eval                                     # unit tests, then the golden cases
+node dist/src/cli.js fixtures/energy-fixture
+# wrote manifest.json, plugin.json, marketplace.json
+#   name: energy-fixture @ 0.2.0 · skills: 2 · commands: 1 · hooks: 2 · mcp: 2
+# [plugsmith] check: valid
+node dist/src/cli.js validate fixtures/energy-fixture --claude
+# claude plugin validate: passed
+```
+
+With `E2B_API_KEY` set, `plugsmith validate . --sandbox=e2b` uploads only the files git tracks to a fresh E2B
+microVM, installs Claude Code there and validates that copy. A plugin that leans on an ignored `dist/` or an
+untracked script passes on your machine and fails there.
+
+## How it works
+
+```
+any-repo/                                   any-repo/.claude-plugin/
+  skills/review/SKILL.md                      plugin.json       ← what Claude Code reads
+  .claude/skills/deep-think/SKILL.md   →      marketplace.json  ← one plugin, "source": "./"
+  .claude/agents/reviewer.md                  manifest.json     ← plugsmith's inventory, for catalogs
   .claude/commands/status.md
-  hooks/pre-compact-memory-flush.sh
+  hooks/hooks.json
   .mcp.json
 ```
 
-→ `plugsmith .` →
+One owned artifact: `src/builder.ts`, the scanner and emitter. It:
 
-```
-any-repo/.claude-plugin/
-  manifest.json      ← full schema with skills, commands, hooks, mcp
-  marketplace.json   ← catalog-ready envelope
-```
+1. Reads `skills/*/SKILL.md` and `.claude/skills/*/SKILL.md`: name, description, triggers
+2. Reads `.claude/commands/*.md` and `.claude/agents/*.md`
+3. Reads `hooks/` and `.mcp.json`
+4. Writes `plugin.json` and `marketplace.json` in Claude Code's shape (`src/claude.ts`) and the inventory
 
-## Quickstart
+Rules it follows, from Claude Code's plugin and marketplace references:
 
-```bash
-# From this repo
-pnpm build
-node dist/cli.js /path/to/your-repo
+- `name` is the only required key; names that start with `claude-` or `anthropic-` are reserved
+- every component path starts with `./`, stays inside the plugin and exists
+- `agents` and `commands` replace their default folders, so agent files are listed one by one; `skills` adds
+  to `skills/`; `hooks/hooks.json` and `.mcp.json` load without a key
+- `marketplace.json` needs `name`, `owner.name` and plugin entries with a `./` source; names such as
+  `agent-skills` and `github` are reserved
 
-# Or dry run (no files written)
-node dist/cli.js /path/to/your-repo --dry
-```
-
-## Architecture
-
-One owned artifact: `src/builder.ts` — the scanner + emitter. It:
-
-1. Reads `.claude/skills/*/SKILL.md` → extracts name, description, triggers
-2. Reads `.claude/commands/*.md` → extracts name, description
-3. Reads `hooks/*.sh|.js|.ts` → infers hook type from filename
-4. Reads `.mcp.json` → extracts server names + commands
-5. Emits a `PluginManifest` + `MarketplaceEntry` JSON to `.claude-plugin/`
-
-No LLM calls. No network. No side effects beyond writing two JSON files. Pure filesystem → JSON.
+An existing `plugin.json` or `marketplace.json` is kept unless you pass `--force` (the old plugsmith catalog
+format is always replaced). Warnings name what would break for a stranger: an MCP server on a relative path,
+hooks that live only in `.claude/settings.json`, a missing author. No LLM calls; the only network use is the
+optional clean room.
 
 ## Test
 
 ```bash
-pnpm test
+pnpm test     # 43 vitest cases: the energy-fixture build, name rules, the validator, keep-or-replace, the clean room
+pnpm eval     # 8 golden repositories; each verdict must match claude plugin validate when claude is on PATH
 ```
 
-Runs 30 assertions on the `fixtures/energy-fixture` test repo — validates schema, counts, field shapes,
-on-disk JSON correctness, dry mode, error handling, and empty-repo warnings.
+Every night `.github/workflows/improve.yml` runs the tests and the golden eval against Claude Code's validator and
+compares the `plugin.json` keys plugsmith knows with Claude Code's manifest reference. When the reference changes,
+it opens an issue with the change to make; a person reviews and merges it.
 
 ## See Also
 
-- [Armory](https://github.com/naman10parikh/armory) — the catalog that consumes marketplace.json bundles
-- [Quartermaster](https://github.com/naman10parikh/quartermaster) — installs + evals tools from Armory
-- [Darwin](https://github.com/naman10parikh/darwin) — the self-improvement harness that improves these
+- [Armory](https://github.com/naman10parikh/armory): the catalog that reads plugsmith's inventory
+- [Darwin](https://github.com/naman10parikh/darwin): the self-improvement harness that improves these
+- [hooksmith](https://github.com/naman10parikh/hooksmith): writes and fire-tests the hooks a plugin ships
 
-## Status
+<!-- fleet:anatomy:start -->
+## What it is made of
 
-`PROVISIONAL NAME — plugsmith` — pending chairman confirm/rename. See TODOS.md §N1.
+Every project in this fleet is graded on the same 11 harness components and on self-improvement. Each mark is backed by a file you can open.
+
+| Component | Grade | Where |
+| --- | --- | --- |
+| Identity | ✅ | identity/SOUL.md:3 |
+| Memory | ✅ | identity/LEARNINGS.md:1 · src/recall.ts:66 (recall) |
+| Skills | ✅ | skills/ (3 own skills) |
+| Tools/CLIs | ✅ | package.json:21-22 (plugsmith, plugsmith-mcp) |
+| Hooks | ✅ | .claude/settings.json:9 · hooks/plugin-guard.mjs:1 |
+| Sub-agents | ✅ | .claude/agents/manifest-reviewer.md:2 · plugin-packager.md:2 |
+| MCPs | ✅ | src/mcp-server.ts:167 (3 tools) |
+| Dispatch | ✅ | .github/workflows/improve.yml:7 (nightly) |
+| Evals | ✅ | evals/run.mjs:1 · .github/workflows/ci.yml:24 |
+| Observability | ✅ | src/run-log.ts:47 (run log) |
+| Sandbox/Infra | ✅ | src/sandbox.ts:58 (E2B microVM) |
+| RSI / open-endedness | ✅ | dsip.json:2 · scripts/field-drift.mjs:1 (honest L2) |
+
+✅ real and tested · 🟡 partial, with the reason in the row · ❌ absent
+<!-- fleet:anatomy:end -->
+
+<!-- fleet:footer:start -->
+## How it improves itself
+
+It carries its own evals and a self-improvement contract, [`dsip.json`](dsip.json) (level L2). A scheduled loop runs the evals, tries a change in a sandbox and opens it for review. A change that lowers a score is not merged, and a person merges every change. Lessons it learns are kept as rules in its memory files.
+
+## Part of a fleet
+
+One of the agent-native, recursively self-improving open-source projects by [Naman Parikh](https://github.com/naman10parikh). Each one is an agent employee that owns one part of an agent's harness or of the product around it.
+
+Siblings: [agentdial](https://github.com/naman10parikh/agentdial) (identity) · [wikimem](https://github.com/naman10parikh/wikimem) (memory) · [skillsmith](https://github.com/naman10parikh/skillsmith) (skills) · [agent-booster](https://github.com/naman10parikh/agent-booster) (tools / CLIs) · [armory](https://github.com/naman10parikh/armory) (MCPs and the component registry) · [agentgrid](https://github.com/naman10parikh/agentgrid) (dispatch) · [agentswarm](https://github.com/naman10parikh/agentswarm) (dispatch) · [agentbench](https://github.com/naman10parikh/agentbench) (evals) · [agentmoney](https://github.com/naman10parikh/agentmoney) (observability) · [claude-harness](https://github.com/naman10parikh/claude-harness) (the whole harness, as a template).
+
+## Contributing and security
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md); AI-assisted pull requests are welcome. Report a vulnerability privately, as [SECURITY.md](SECURITY.md) explains.
+
+## License
+
+MIT, © 2026 Naman Parikh. See [LICENSE](LICENSE).
+<!-- fleet:footer:end -->
