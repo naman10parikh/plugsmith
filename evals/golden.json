@@ -1,10 +1,13 @@
 {
-  "about": "Golden cases plugsmith must get right. Each case is a tiny repository. Built cases run plugsmith first; hand-written cases check plugin files someone wrote. 'valid' is what Claude Code's own validator says (claude plugin validate, Claude Code 2.1.304, 2026-10-19); plugsmith's static check must agree, and must agree with claude when it is on PATH.",
+  "about": "Golden cases plugsmith must get right. Each case is a tiny repository. Built cases run plugsmith first; hand-written cases check plugin files someone wrote. 'valid' follows Claude Code's plugin and marketplace references and what claude plugin validate said on 2026-10-19 (Claude Code 2.1.304). plugsmith's static check must agree on every case, and claude must agree whenever it is on PATH, except where a case sets 'claude_check': 'skip' with the reason.",
   "cases": [
     {
       "case": "skills at the root only",
       "build": true,
-      "files": { "package.json": "{\"name\":\"skill-pack\",\"version\":\"0.1.0\",\"description\":\"Skills.\",\"author\":\"A\"}", "skills/one/SKILL.md": "---\nname: one\ndescription: Use when testing.\n---\n# one\n" },
+      "files": {
+        "package.json": "{\"name\":\"skill-pack\",\"version\":\"0.1.0\",\"description\":\"Skills.\",\"author\":\"A\"}",
+        "skills/one/SKILL.md": "---\nname: one\ndescription: Use when testing.\n---\n# one\n"
+      },
       "valid": true
     },
     {
@@ -23,28 +26,42 @@
     {
       "case": "an MCP server on a relative path still validates, with a warning",
       "build": true,
-      "files": { "package.json": "{\"name\":\"rel-mcp\",\"author\":\"A\"}", ".mcp.json": "{\"mcpServers\":{\"local\":{\"command\":\"node\",\"args\":[\"dist/server.js\"]}}}" },
+      "files": {
+        "package.json": "{\"name\":\"rel-mcp\",\"author\":\"A\"}",
+        ".mcp.json": "{\"mcpServers\":{\"local\":{\"command\":\"node\",\"args\":[\"dist/server.js\"]}}}"
+      },
       "valid": true,
       "warning": "relative path"
     },
     {
       "case": "a package name that passes as Anthropic's own",
       "build": true,
-      "files": { "package.json": "{\"name\":\"claude-helper\",\"author\":\"A\"}", "skills/x/SKILL.md": "---\nname: x\ndescription: d\n---\n" },
+      "files": {
+        "package.json": "{\"name\":\"claude-helper\",\"author\":\"A\"}",
+        "skills/x/SKILL.md": "---\nname: x\ndescription: d\n---\n"
+      },
       "valid": false,
-      "error": "reserved"
+      "error": "reserved",
+      "claude_check": "skip",
+      "claude_check_reason": "Claude Code's reserved-name check fired on a developer machine (2.1.304, with and without a login) but not on the GitHub Actions runner with the same version on 2026-10-19; plugsmith follows the documented rule."
     },
     {
       "case": "hand-written: a component path without ./",
       "build": false,
-      "files": { ".claude-plugin/plugin.json": "{\"name\":\"paths\",\"commands\":\"commands/\"}", "commands/a.md": "A.\n" },
+      "files": {
+        ".claude-plugin/plugin.json": "{\"name\":\"paths\",\"commands\":\"commands/\"}",
+        "commands/a.md": "A.\n"
+      },
       "valid": false,
       "error": "must start with \"./\""
     },
     {
       "case": "hand-written: agents given as a folder",
       "build": false,
-      "files": { ".claude-plugin/plugin.json": "{\"name\":\"folders\",\"agents\":\"./agents/\"}", "agents/a.md": "---\nname: a\ndescription: d\n---\n" },
+      "files": {
+        ".claude-plugin/plugin.json": "{\"name\":\"folders\",\"agents\":\"./agents/\"}",
+        "agents/a.md": "---\nname: a\ndescription: d\n---\n"
+      },
       "valid": false,
       "error": "must be an .md file"
     },
@@ -56,7 +73,9 @@
         ".claude-plugin/marketplace.json": "{\"name\":\"github\",\"owner\":{\"name\":\"A\"},\"description\":\"d\",\"plugins\":[{\"name\":\"gh-tools\",\"source\":\"./\"}]}"
       },
       "valid": false,
-      "error": "reserved marketplace name"
+      "error": "reserved marketplace name",
+      "claude_check": "skip",
+      "claude_check_reason": "Claude Code's reserved-name check fired on a developer machine (2.1.304, with and without a login) but not on the GitHub Actions runner with the same version on 2026-10-19; plugsmith follows the documented rule."
     },
     {
       "case": "hand-written: a marketplace entry whose source lacks ./",

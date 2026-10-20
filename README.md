@@ -143,11 +143,13 @@ optional clean room.
 
 ```bash
 pnpm test     # 43 vitest cases: the energy-fixture build, name rules, the validator, keep-or-replace, the clean room
-pnpm eval     # 8 golden repositories; each verdict must match claude plugin validate when claude is on PATH
+pnpm eval     # 8 golden repositories; 6 are also checked against claude plugin validate when it is on PATH
 ```
 
 Every night `.github/workflows/improve.yml` runs the tests and the golden eval against Claude Code's validator and
-compares the `plugin.json` keys plugsmith knows with Claude Code's manifest reference. When the reference changes,
+compares the `plugin.json` keys plugsmith knows with Claude Code's manifest reference. The two reserved-name
+cases skip the Claude Code check: its reserved-name check fired on a developer machine but not on the CI runner,
+with the same version, so plugsmith follows the documented rule there. When the reference changes,
 it opens an issue with the change to make; a person reviews and merges it.
 
 ## See Also

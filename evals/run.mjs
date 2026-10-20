@@ -28,13 +28,15 @@ for (const c of golden.cases) {
     writeFileSync(join(dir, rel), body);
   }
   const warnings = c.build ? buildPlugin(dir).manifest.warnings : [];
-  const r = validatePlugin(dir, { withClaude: haveClaude });
+  const checkClaude = haveClaude && c.claude_check !== "skip";
+  const r = validatePlugin(dir, { withClaude: checkClaude });
   const problems = [];
   if (r.ok !== c.valid) problems.push(`plugsmith says ${r.ok ? "valid" : "invalid"} (${r.errors.join("; ") || "no errors"})`);
   if (c.error && !r.errors.some((e) => e.includes(c.error))) problems.push(`no error containing "${c.error}"`);
   if (c.warning && !warnings.some((w) => w.includes(c.warning))) problems.push(`no warning containing "${c.warning}"`);
   if (r.claude?.ran && r.claude.ok !== c.valid) problems.push(`claude plugin validate says ${r.claude.ok ? "valid" : "invalid"}: ${r.claude.output.split("\n").slice(-3).join(" | ")}`);
-  console.log(`${problems.length ? "✗" : "✓"} ${c.case}${r.claude?.ran ? " (claude agrees)" : ""}`);
+  const note = r.claude?.ran ? (r.claude.ok === c.valid ? " (claude agrees)" : "") : haveClaude && c.claude_check === "skip" ? " (claude check skipped: see claude_check_reason)" : "";
+  console.log(`${problems.length ? "✗" : "✓"} ${c.case}${note}`);
   for (const p of problems) console.log(`    ${p}`);
   if (problems.length) failed++;
 }

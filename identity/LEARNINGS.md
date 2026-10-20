@@ -4,6 +4,9 @@ Corrections that became rules. Newest first. Each line: what went wrong, the rul
 
 ## 2026-10-19
 
+- **Ground truth can vary by machine.** Claude Code 2.1.304 refused the names `claude-helper` and `github` on a
+  developer machine (logged in or not) but accepted them on the GitHub Actions runner. Rule: a golden case whose
+  Claude Code verdict varies sets `claude_check: skip` with the reason; plugsmith keeps the documented rule.
 - **Claude Code never read what plugsmith wrote.** The June build emitted `.claude-plugin/manifest.json` and a
   catalog envelope named `marketplace.json`; Claude Code reads `plugin.json` and a marketplace with `owner` and
   `plugins`. Rule: emit those two in Claude Code's shape (`src/claude.ts`); keep `manifest.json` only as the
