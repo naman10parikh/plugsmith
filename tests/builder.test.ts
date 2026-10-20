@@ -68,8 +68,11 @@ describe("buildPlugin() on energy-fixture", () => {
     expect(() => new Date(manifest.emittedAt).toISOString()).not.toThrow();
   });
 
-  it("repoRoot matches the fixture path", () => {
-    expect(manifest.repoRoot).toBe(FIXTURE);
+  it("repoRoot is '.' and every inventory path is repo-relative (no absolute paths leak)", () => {
+    expect(manifest.repoRoot).toBe(".");
+    for (const item of [...manifest.skills, ...manifest.commands, ...manifest.hooks]) {
+      expect(item.path.startsWith("./")).toBe(true);
+    }
   });
 
   // Skills
@@ -166,11 +169,18 @@ describe("buildPlugin() on energy-fixture", () => {
     expect(onDisk).toEqual(manifest);
   });
 
-  it("marketplace.json on disk parses and matches in-memory marketplace entry", () => {
-    const onDisk = JSON.parse(
-      fs.readFileSync(path.join(PLUGIN_DIR, "marketplace.json"), "utf-8"),
-    ) as MarketplaceEntry;
-    expect(onDisk).toEqual(marketplace);
+  it("marketplace.json on disk is Claude Code's format: name, owner.name and one ./ plugin", () => {
+    const onDisk = JSON.parse(fs.readFileSync(path.join(PLUGIN_DIR, "marketplace.json"), "utf-8")) as Record<string, unknown>;
+    expect(onDisk).toMatchObject({ name: "energy-fixture", owner: { name: "Fixture Author" } });
+    expect(onDisk["plugins"]).toEqual([{ name: "energy-fixture", source: "./", description: manifest.description }]);
+  });
+
+  it("plugin.json on disk is what Claude Code reads, with .claude/ folders listed", () => {
+    const plugin = JSON.parse(fs.readFileSync(path.join(PLUGIN_DIR, "plugin.json"), "utf-8")) as Record<string, unknown>;
+    expect(plugin).toMatchObject({ name: "energy-fixture", version: "0.2.0", author: { name: "Fixture Author" } });
+    expect(plugin["skills"]).toEqual(["./.claude/skills/"]);
+    expect(plugin["commands"]).toEqual(["./.claude/commands/"]);
+    expect(plugin["agents"]).toBeUndefined();
   });
 });
 

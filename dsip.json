@@ -1,0 +1,22 @@
+{
+  "dsip": "0.1",
+  "product": "plugsmith",
+  "levels": ["agent"],
+  "loop": {
+    "cadence": "nightly",
+    "steps": ["review", "extract", "prioritize", "validate", "ship"]
+  },
+  "selection": "performance",
+  "eval": {
+    "rubric": "evals/golden.json",
+    "gate": "pnpm test && pnpm eval (agreeing with claude plugin validate) pass in CI on every pull request"
+  },
+  "snapback": {
+    "granularity": ["skill"],
+    "vcs": "git"
+  },
+  "externalIntelligence": {
+    "enabled": true,
+    "source": "https://code.claude.com/docs/en/plugins-reference.md (read nightly by scripts/field-drift.mjs)"
+  }
+}

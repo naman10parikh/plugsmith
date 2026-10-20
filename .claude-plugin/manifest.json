@@ -2,30 +2,47 @@
   "schemaVersion": "1.0.0",
   "name": "plugsmith",
   "version": "0.1.0",
-  "description": "Turns any repo's skills+hooks+commands+MCP into a .claude-plugin/marketplace.json bundle.",
-  "emittedAt": "2026-06-03T00:00:00.000Z",
-  "repoRoot": "~/plugsmith",
+  "description": "Turn any repository into a Claude Code plugin and marketplace.",
+  "emittedAt": "2026-10-20T04:16:06.345Z",
+  "repoRoot": ".",
   "skills": [
     {
       "name": "build-plugin",
-      "path": "~/plugsmith/.claude/skills/build-plugin",
-      "description": "Scan a repo's harness surface and emit `.claude-plugin/manifest.json` + `marketplace.json`.",
-      "triggers": ["build plugin", "emit manifest", "scan repo", "package harness", "generate plugin bundle", "run plugsmith"]
+      "path": "./skills/build-plugin",
+      "description": "---",
+      "triggers": []
     },
     {
-      "name": "validate-manifest",
-      "path": "~/plugsmith/.claude/skills/validate-manifest",
-      "description": "Validate an existing `.claude-plugin/manifest.json` against the plugsmith schema and report any issues.",
-      "triggers": ["validate manifest", "check manifest", "lint plugin", "verify plugin bundle", "manifest errors"]
+      "name": "plugin-doctor",
+      "path": "./skills/plugin-doctor",
+      "description": "---",
+      "triggers": []
+    },
+    {
+      "name": "validate-plugin",
+      "path": "./skills/validate-plugin",
+      "description": "---",
+      "triggers": []
     }
   ],
   "commands": [],
-  "hooks": [],
+  "hooks": [
+    {
+      "name": "plugin-guard.mjs",
+      "path": "./hooks/plugin-guard.mjs",
+      "type": "unknown"
+    }
+  ],
   "mcpServers": [
     {
       "name": "plugsmith",
-      "command": "node",
-      "args": ["dist/mcp-server.js"]
+      "command": "npx",
+      "args": [
+        "-y",
+        "-p",
+        "github:naman10parikh/plugsmith",
+        "plugsmith-mcp"
+      ]
     }
   ],
   "warnings": []

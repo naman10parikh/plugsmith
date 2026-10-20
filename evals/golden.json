@@ -1,0 +1,72 @@
+{
+  "about": "Golden cases plugsmith must get right. Each case is a tiny repository. Built cases run plugsmith first; hand-written cases check plugin files someone wrote. 'valid' is what Claude Code's own validator says (claude plugin validate, Claude Code 2.1.304, 2026-10-19); plugsmith's static check must agree, and must agree with claude when it is on PATH.",
+  "cases": [
+    {
+      "case": "skills at the root only",
+      "build": true,
+      "files": { "package.json": "{\"name\":\"skill-pack\",\"version\":\"0.1.0\",\"description\":\"Skills.\",\"author\":\"A\"}", "skills/one/SKILL.md": "---\nname: one\ndescription: Use when testing.\n---\n# one\n" },
+      "valid": true
+    },
+    {
+      "case": "everything under .claude/, plugin hooks and an npx MCP server",
+      "build": true,
+      "files": {
+        "package.json": "{\"name\":\"@acme/full-kit\",\"version\":\"2.0.0\",\"description\":\"Full kit.\",\"author\":{\"name\":\"Acme\",\"url\":\"https://acme.example\"},\"license\":\"MIT\"}",
+        ".claude/agents/reviewer.md": "---\nname: reviewer\ndescription: Reviews diffs.\n---\nReview.\n",
+        ".claude/commands/status.md": "Show status.\n",
+        ".claude/skills/lint/SKILL.md": "---\nname: lint\ndescription: Use when linting.\n---\n# lint\n",
+        "hooks/hooks.json": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"echo done\"}]}]}}",
+        ".mcp.json": "{\"mcpServers\":{\"kit\":{\"command\":\"npx\",\"args\":[\"-y\",\"full-kit-mcp\"]}}}"
+      },
+      "valid": true
+    },
+    {
+      "case": "an MCP server on a relative path still validates, with a warning",
+      "build": true,
+      "files": { "package.json": "{\"name\":\"rel-mcp\",\"author\":\"A\"}", ".mcp.json": "{\"mcpServers\":{\"local\":{\"command\":\"node\",\"args\":[\"dist/server.js\"]}}}" },
+      "valid": true,
+      "warning": "relative path"
+    },
+    {
+      "case": "a package name that passes as Anthropic's own",
+      "build": true,
+      "files": { "package.json": "{\"name\":\"claude-helper\",\"author\":\"A\"}", "skills/x/SKILL.md": "---\nname: x\ndescription: d\n---\n" },
+      "valid": false,
+      "error": "reserved"
+    },
+    {
+      "case": "hand-written: a component path without ./",
+      "build": false,
+      "files": { ".claude-plugin/plugin.json": "{\"name\":\"paths\",\"commands\":\"commands/\"}", "commands/a.md": "A.\n" },
+      "valid": false,
+      "error": "must start with \"./\""
+    },
+    {
+      "case": "hand-written: agents given as a folder",
+      "build": false,
+      "files": { ".claude-plugin/plugin.json": "{\"name\":\"folders\",\"agents\":\"./agents/\"}", "agents/a.md": "---\nname: a\ndescription: d\n---\n" },
+      "valid": false,
+      "error": "must be an .md file"
+    },
+    {
+      "case": "hand-written: a reserved marketplace name",
+      "build": false,
+      "files": {
+        ".claude-plugin/plugin.json": "{\"name\":\"gh-tools\",\"author\":{\"name\":\"A\"}}",
+        ".claude-plugin/marketplace.json": "{\"name\":\"github\",\"owner\":{\"name\":\"A\"},\"description\":\"d\",\"plugins\":[{\"name\":\"gh-tools\",\"source\":\"./\"}]}"
+      },
+      "valid": false,
+      "error": "reserved marketplace name"
+    },
+    {
+      "case": "hand-written: a marketplace entry whose source lacks ./",
+      "build": false,
+      "files": {
+        ".claude-plugin/plugin.json": "{\"name\":\"src-tools\",\"author\":{\"name\":\"A\"}}",
+        ".claude-plugin/marketplace.json": "{\"name\":\"src-tools\",\"owner\":{\"name\":\"A\"},\"description\":\"d\",\"plugins\":[{\"name\":\"src-tools\",\"source\":\"src-tools\"}]}"
+      },
+      "valid": false,
+      "error": "must start with \"./\""
+    }
+  ]
+}

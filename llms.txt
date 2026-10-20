@@ -1,18 +1,33 @@
 # Plugsmith
 
-> Private. Plugin emitter — turns any repo's skills+hooks+commands+MCP into a .claude-plugin/marketplace.json bundle.
+> Turn any repository into a Claude Code plugin and marketplace: plugsmith writes .claude-plugin/plugin.json and a one-plugin marketplace.json, checks them the way claude plugin validate does, and can prove them in a clean E2B microVM.
 
-## Documentation
+## Start here
 
-- [README.md](README.md): Quickstart, architecture, what plugsmith does and doesn't do.
-- [AGENTS.md](AGENTS.md): Repo structure + agent operating protocol.
-- [CLAUDE.md](CLAUDE.md): Operating handbook — the Four Things, TODOS protocol, commit convention.
-- [identity/SOUL.md](identity/SOUL.md): Who plugsmith is — identity, personality, boundaries.
-- [TODOS.md](TODOS.md): Task queue.
+- [AGENTS.md](AGENTS.md): what plugsmith does, every tool and how to call it, what not to do
+- [README.md](README.md): quick start, how it works, the rules it follows
+- [identity/SOUL.md](identity/SOUL.md): who plugsmith is, what it owns, its boundaries
 
-## Notes
+## Skills
 
-- This file follows the llms.txt convention (https://llmstxt.org) so AI agents can
-  discover this repo's docs without scraping.
-- The ONE owned artifact is `src/builder.ts`. Everything else serves or tests it.
-- Provisional name: chairman must confirm "plugsmith" or rename before `gh repo create`.
+- [skills/build-plugin/SKILL.md](skills/build-plugin/SKILL.md): turn a repo into a plugin with a one-plugin marketplace
+- [skills/validate-plugin/SKILL.md](skills/validate-plugin/SKILL.md): check plugin.json and marketplace.json, with Claude Code's verdict and a clean room
+- [skills/plugin-doctor/SKILL.md](skills/plugin-doctor/SKILL.md): diagnose a plugin that does not load or loads only partly
+
+## MCP tools
+
+- [src/mcp-server.ts](src/mcp-server.ts): `plugsmith-mcp` with `build_plugin`, `validate_plugin` and `validate_manifest`
+
+## Code
+
+- [src/builder.ts](src/builder.ts): the scanner and emitter
+- [src/claude.ts](src/claude.ts): plugin.json and marketplace.json in Claude Code's shape, and the name rules
+- [src/validate.ts](src/validate.ts): the check
+- [src/sandbox.ts](src/sandbox.ts): the E2B clean room
+- [evals/golden.json](evals/golden.json): golden cases, each matched against claude plugin validate
+
+## Optional
+
+- [identity/MEMORY.md](identity/MEMORY.md): what Claude Code reads in a plugin
+- [identity/LEARNINGS.md](identity/LEARNINGS.md): corrections that became rules
+- [dsip.json](dsip.json): the self-improvement contract

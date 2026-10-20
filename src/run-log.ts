@@ -14,14 +14,14 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { PluginManifest, MarketplaceEntry } from "./types.js";
 
-/** Directory where the log file lives — always relative to this package root. */
-const LOG_DIR = path.resolve(
-  path.dirname(new URL(import.meta.url).pathname),
-  "..",
-  "logs",
-);
+/** Directory where the log file lives: logs/ at the package root (from src/ or from dist/src/). */
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const LOG_DIR = fs.existsSync(path.resolve(HERE, "..", "package.json"))
+  ? path.resolve(HERE, "..", "logs")
+  : path.resolve(HERE, "..", "..", "logs");
 const LOG_FILE = path.join(LOG_DIR, "build-runs.jsonl");
 
 export interface BuildRunEntry {
@@ -87,5 +87,18 @@ export function readBuildLog(): BuildRunEntry[] {
       .map((l) => JSON.parse(l) as BuildRunEntry);
   } catch {
     return [];
+  }
+}
+
+/**
+ * Append one generic JSONL line (op + fields) to logs/build-runs.jsonl, for MCP calls and the hook.
+ * Never throws.
+ */
+export function appendRunLog(op: string, fields: Record<string, unknown>): void {
+  try {
+    fs.mkdirSync(LOG_DIR, { recursive: true });
+    fs.appendFileSync(LOG_FILE, JSON.stringify({ ts: new Date().toISOString(), op, ...fields }) + "\n", "utf-8");
+  } catch {
+    // Intentionally silent: observability must not break the caller
   }
 }

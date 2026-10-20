@@ -1,15 +1,9 @@
-# Plugsmith — Operating Handbook
+@AGENTS.md
+
+# Plugsmith — Claude Code operating rules
 
 > Forged as a meta-harness. One repo = one owned artifact (src/builder.ts) + its eval.
 > See `identity/SOUL.md` for who plugsmith is.
-
-## What this is
-
-The **plugin emitter** component: scans any agent-native repo's harness surface
-(`.claude/skills/`, `.claude/commands/`, `hooks/`, `.mcp.json`) and emits a valid
-`.claude-plugin/manifest.json` + `marketplace.json` bundle.
-
-**Owned artifact:** `src/builder.ts` — pure filesystem → JSON. No LLM, no network, no deps.
 
 ## The Four Things (Karpathy — before/during ANY code change)
 
@@ -18,7 +12,7 @@ The **plugin emitter** component: scans any agent-native repo's harness surface
 3. **Surgical changes** — touch only what the TODO requires; 0 deletions; match style.
 4. **Goal-driven** — a `verify:` per step; loop until verified, not until it compiles.
 
-Verify command: `pnpm build && pnpm test`
+Verify command: `pnpm build && pnpm test && pnpm eval`
 
 ## TODOS protocol
 
@@ -26,7 +20,7 @@ Claim → Work → Close:
 
 1. Mark TODO `in_progress` + `owner: <you>` in TODOS.md.
 2. Do the work.
-3. Run `pnpm build && pnpm test` — RED blocks commit.
+3. Run `pnpm build && pnpm test && pnpm eval` — RED blocks commit.
 4. Close TODO with evidence (test output line or artifact path).
 5. Commit with conventional commit + Co-Authored-By trailer.
 
@@ -34,14 +28,18 @@ Claim → Work → Close:
 
 `feat(builder):` · `feat(cli):` · `feat(types):` · `test:` · `fix:` · `docs:`
 
-## Provisional name
+## In this repository
 
-`plugsmith` is provisional. Chairman must confirm or rename before `gh repo create`.
-Until then: local only — do NOT push to GitHub.
+- **Ground truth:** `pnpm eval` compares plugsmith's verdicts with `claude plugin validate` whenever `claude` is
+  on PATH; a disagreement is a bug in plugsmith, not in Claude Code. A new rule needs a case in `evals/golden.json`.
+- **Hooks:** `.claude/settings.json` runs `hooks/plugin-guard.mjs` after every Write or Edit of a plugin file;
+  the Bash logger needs `dist/` (run `pnpm build`).
+- **MCP:** the root `.mcp.json` starts the published server through `npx` (safe for anyone who installs the
+  plugin). To use this checkout's own build instead, run `claude --mcp-config .mcp.dev.json`.
+- **Dogfood:** plugsmith's own `.claude-plugin/` is written by plugsmith: `node dist/src/cli.js . --force`.
 
 ## Reuse (don't rebuild)
 
 - Energy `.claude/rules/karpathy-coding-discipline.md` — the Four Things
 - Darwin's tsconfig.json pattern — same strict settings
-- Quartermaster's SOUL.md pattern — boundary-explicit identity
-- Armory catalog schema — marketplace.json is designed to feed Armory
+- Armory catalog schema — the manifest.json inventory is designed to feed Armory

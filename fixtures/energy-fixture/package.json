@@ -1,5 +1,6 @@
 {
   "name": "energy-fixture",
   "version": "0.2.0",
-  "description": "Plugsmith test fixture — mimics an agent-native harness repo."
+  "description": "Plugsmith test fixture — mimics an agent-native harness repo.",
+  "author": "Fixture Author"
 }

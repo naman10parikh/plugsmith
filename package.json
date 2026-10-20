@@ -2,17 +2,26 @@
   "name": "plugsmith",
   "version": "0.1.0",
   "private": true,
-  "description": "Turns any repo's skills+hooks+commands+MCP into a .claude-plugin/marketplace.json bundle.",
+  "description": "Turn any repository into a Claude Code plugin and marketplace.",
   "type": "module",
+  "author": "Naman Parikh (https://github.com/naman10parikh)",
+  "repository": { "type": "git", "url": "git+https://github.com/naman10parikh/plugsmith.git" },
+  "homepage": "https://github.com/naman10parikh/plugsmith#readme",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -w -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "scan": "node dist/cli.js",
-    "verify": "pnpm build && pnpm test"
+    "eval": "node evals/run.mjs",
+    "scan": "node dist/src/cli.js",
+    "verify": "pnpm build && pnpm test",
+    "prepare": "tsc -p tsconfig.json"
   },
-  "bin": { "plugsmith": "./dist/cli.js" },
+  "bin": {
+    "plugsmith": "./dist/src/cli.js",
+    "plugsmith-mcp": "./dist/src/mcp-server.js"
+  },
+  "files": ["dist/src/", "skills/", "identity/", "hooks/", "README.md"],
   "engines": { "node": ">=18" },
   "keywords": [
     "claude",
@@ -23,9 +32,14 @@
     "skills",
     "hooks",
     "mcp",
-    "dev-tools"
+    "dev-tools",
+    "agent-native",
+    "claude-code"
   ],
-  "license": "UNLICENSED",
+  "license": "MIT",
+  "optionalDependencies": {
+    "e2b": "^2.56.0"
+  },
   "devDependencies": {
     "@types/node": "^20.14.0",
     "typescript": "^5.5.0",

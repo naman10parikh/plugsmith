@@ -2,9 +2,10 @@
 /**
  * plugsmith/src/mcp-server.ts
  *
- * Minimal stdio MCP server that exposes two tools:
- *   - build_plugin   — scan a repo and emit .claude-plugin/ bundles
- *   - validate_manifest — parse + field-check an existing manifest.json
+ * Minimal stdio MCP server that exposes three tools:
+ *   - build_plugin      — scan a repo and emit .claude-plugin/plugin.json, marketplace.json and manifest.json
+ *   - validate_plugin   — check plugin.json + marketplace.json the way Claude Code does
+ *   - validate_manifest — parse + field-check plugsmith's inventory (manifest.json)
  *
  * Protocol: JSON-RPC 2.0 over stdin/stdout (MCP stdio transport).
  * Zero external deps — uses only node:fs, node:readline, and the existing builder.
@@ -14,6 +15,8 @@ import * as readline from "node:readline";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { buildPlugin } from "./builder.js";
+import { validatePlugin } from "./validate.js";
+import { appendRunLog } from "./run-log.js";
 
 // ---------------------------------------------------------------------------
 // JSON-RPC helpers
@@ -31,6 +34,11 @@ function err(id: unknown, code: number, message: string): void {
   send({ jsonrpc: "2.0", id, error: { code, message } });
 }
 
+/** MCP tool results travel as text content; the JSON is pretty-printed inside it. */
+function toolResult(id: unknown, data: unknown, isError = false): void {
+  ok(id, { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], ...(isError ? { isError: true } : {}) });
+}
+
 // ---------------------------------------------------------------------------
 // Tool: build_plugin
 // ---------------------------------------------------------------------------
@@ -41,12 +49,18 @@ function handleBuildPlugin(
 ): void {
   const repoRoot = typeof params["repo_root"] === "string" ? params["repo_root"] : process.cwd();
   const dry = params["dry"] === true;
+  const force = params["force"] === true;
 
   try {
-    const result = buildPlugin(path.resolve(repoRoot), dry);
-    ok(id, {
-      name: result.manifest.name,
+    const result = buildPlugin(path.resolve(repoRoot), { dry, force });
+    appendRunLog("mcp-build", { dry, force, written: result.claude.written });
+    toolResult(id, {
+      name: result.claude.plugin.name,
       version: result.manifest.version,
+      written: result.claude.written,
+      kept: result.claude.kept,
+      plugin: result.claude.plugin,
+      marketplace: result.claude.marketplace,
       skillCount: result.marketplace.skillCount,
       commandCount: result.marketplace.commandCount,
       hookCount: result.marketplace.hookCount,
@@ -56,8 +70,19 @@ function handleBuildPlugin(
       dry,
     });
   } catch (e) {
-    err(id, -32000, e instanceof Error ? e.message : String(e));
+    toolResult(id, { error: e instanceof Error ? e.message : String(e) }, true);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Tool: validate_plugin
+// ---------------------------------------------------------------------------
+
+function handleValidatePlugin(id: unknown, params: Record<string, unknown>): void {
+  const repoRoot = typeof params["repo_root"] === "string" ? params["repo_root"] : process.cwd();
+  const result = validatePlugin(path.resolve(repoRoot), { withClaude: params["with_claude"] === true });
+  appendRunLog("mcp-validate", { ok: result.ok, errors: result.errors.length });
+  toolResult(id, result);
 }
 
 // ---------------------------------------------------------------------------
@@ -120,7 +145,7 @@ function handleValidateManifest(
 
   const warnings = Array.isArray(parsed["warnings"]) ? (parsed["warnings"] as string[]) : [];
 
-  ok(id, {
+  toolResult(id, {
     valid: issues.length === 0,
     issues,
     manifestWarnings: warnings,
@@ -141,7 +166,7 @@ const TOOLS = [
   {
     name: "build_plugin",
     description:
-      "Scan a repo's harness surface (.claude/skills, hooks, .mcp.json) and emit .claude-plugin/manifest.json + marketplace.json.",
+      "Turn a repo into a Claude Code plugin: scan its skills, commands, agents, hooks and .mcp.json and write .claude-plugin/plugin.json, a one-plugin marketplace.json and plugsmith's manifest.json inventory. An existing plugin.json or marketplace.json is kept unless force is true.",
     inputSchema: {
       type: "object",
       properties: {
@@ -153,13 +178,29 @@ const TOOLS = [
           type: "boolean",
           description: "If true, compute results without writing files.",
         },
+        force: {
+          type: "boolean",
+          description: "If true, replace an existing plugin.json and marketplace.json.",
+        },
+      },
+    },
+  },
+  {
+    name: "validate_plugin",
+    description:
+      "Check a repo's .claude-plugin/plugin.json and marketplace.json the way Claude Code does: required fields, reserved names, ./ component paths that exist, .md agent files, a valid marketplace entry. with_claude also runs the real `claude plugin validate`.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        repo_root: { type: "string", description: "Path to the repo. Defaults to cwd." },
+        with_claude: { type: "boolean", description: "Also run `claude plugin validate` when it is on PATH." },
       },
     },
   },
   {
     name: "validate_manifest",
     description:
-      "Parse and field-check an existing .claude-plugin/manifest.json. Returns valid:true/false + issues[].",
+      "Parse and field-check plugsmith's inventory, .claude-plugin/manifest.json (Claude Code ignores this file; use validate_plugin for what it reads). Returns valid:true/false + issues[].",
     inputSchema: {
       type: "object",
       properties: {
@@ -193,11 +234,12 @@ rl.on("line", (line) => {
 
   const { id, method, params } = msg;
   const p = (params ?? {}) as Record<string, unknown>;
+  if (id === undefined || id === null) return; // a notification: nothing to answer
 
   switch (method) {
     case "initialize":
       ok(id, {
-        protocolVersion: "2024-11-05",
+        protocolVersion: "2025-06-18",
         capabilities: { tools: {} },
         serverInfo: { name: "plugsmith", version: "0.1.0" },
       });
@@ -212,6 +254,8 @@ rl.on("line", (line) => {
       const toolArgs = (p["arguments"] ?? {}) as Record<string, unknown>;
       if (toolName === "build_plugin") {
         handleBuildPlugin(id, toolArgs);
+      } else if (toolName === "validate_plugin") {
+        handleValidatePlugin(id, toolArgs);
       } else if (toolName === "validate_manifest") {
         handleValidateManifest(id, toolArgs);
       } else {
@@ -219,6 +263,10 @@ rl.on("line", (line) => {
       }
       break;
     }
+
+    case "ping":
+      ok(id, {});
+      break;
 
     default:
       err(id, -32601, `Method not found: ${String(method)}`);

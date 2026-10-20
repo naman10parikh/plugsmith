@@ -1,11 +1,13 @@
 /**
  * plugsmith/src/builder.ts
  *
- * THE core owned artifact — scans a repo's harness surfaces and emits
- * .claude-plugin/manifest.json + marketplace.json.
+ * THE core owned artifact — scans a repo's harness surfaces and emits, into <repoRoot>/.claude-plugin/:
+ *   plugin.json       the manifest Claude Code reads (derived in claude.ts)
+ *   marketplace.json  a one-plugin marketplace, so `/plugin marketplace add <owner>/<repo>` works
+ *   manifest.json     plugsmith's inventory of every surface, for catalogs (Claude Code ignores it)
+ * An existing plugin.json or marketplace.json is kept unless `force` is set.
  *
- * No LLM calls, no network, no side effects beyond writing two JSON files
- * into <repoRoot>/.claude-plugin/. Pure filesystem → JSON.
+ * No LLM calls, no network. Paths in the output are relative to the repo, never absolute.
  */
 
 import * as fs from "node:fs";
@@ -19,6 +21,12 @@ import type {
   PluginMcp,
 } from "./types.js";
 import { logBuildRun } from "./run-log.js";
+import { deriveClaudeFiles, type ClaudeMarketplaceJson, type ClaudePluginJson } from "./claude.js";
+
+/** A repo-relative path with the `./` prefix Claude Code expects. */
+function rel(root: string, abs: string): string {
+  return "./" + path.relative(root, abs).split(path.sep).join("/");
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -104,7 +112,16 @@ function scanSkills(
   repoRoot: string,
   warnings: string[],
 ): PluginSkill[] {
-  const skillsDir = path.join(repoRoot, ".claude", "skills");
+  return [path.join(repoRoot, "skills"), path.join(repoRoot, ".claude", "skills")].flatMap((dir) =>
+    scanSkillDir(repoRoot, dir, warnings),
+  );
+}
+
+function scanSkillDir(
+  repoRoot: string,
+  skillsDir: string,
+  warnings: string[],
+): PluginSkill[] {
   if (!fs.existsSync(skillsDir)) return [];
 
   const skills: PluginSkill[] = [];
@@ -112,7 +129,7 @@ function scanSkills(
   try {
     entries = fs.readdirSync(skillsDir);
   } catch {
-    warnings.push(`Could not read .claude/skills/ — permission denied`);
+    warnings.push(`Could not read ${rel(repoRoot, skillsDir)} — permission denied`);
     return [];
   }
 
@@ -138,9 +155,11 @@ function scanSkills(
     const description = skillMd ? extractSkillDescription(skillMd) : "";
     const triggers = skillMd ? extractTriggers(skillMd) : [];
 
+    if (!skillMd) continue; // a folder with neither SKILL.md nor README.md is not a skill
+
     skills.push({
       name: entry,
-      path: skillPath,
+      path: rel(repoRoot, skillPath),
       description,
       triggers,
     });
@@ -170,7 +189,7 @@ function scanCommands(
     const cmdPath = path.join(commandsDir, entry);
     const name = entry.replace(/\.md$/, "");
     const description = firstLine(cmdPath);
-    commands.push({ name, path: cmdPath, description });
+    commands.push({ name, path: rel(repoRoot, cmdPath), description });
   }
 
   return commands;
@@ -192,11 +211,11 @@ function scanHooks(
   }
 
   for (const entry of entries) {
-    if (!entry.endsWith(".sh") && !entry.endsWith(".js") && !entry.endsWith(".ts")) continue;
+    if (!/\.(sh|js|mjs|cjs|ts)$/.test(entry)) continue;
     const hookPath = path.join(hooksDir, entry);
     hooks.push({
       name: entry,
-      path: hookPath,
+      path: rel(repoRoot, hookPath),
       type: inferHookType(entry),
     });
   }
@@ -306,19 +325,31 @@ function repoVersion(repoRoot: string): string {
 // ---------------------------------------------------------------------------
 
 export interface ScanResult {
+  /** plugsmith's inventory (written as manifest.json). */
   manifest: PluginManifest;
+  /** Catalog envelope: counts plus the inventory (returned, not written). */
   marketplace: MarketplaceEntry;
+  /** What Claude Code reads, and which of the two files were written or kept. */
+  claude: { plugin: ClaudePluginJson; marketplace: ClaudeMarketplaceJson; written: string[]; kept: string[] };
   outputDir: string;
 }
 
+export interface BuildOptions {
+  /** Compute and return results without writing files. */
+  dry?: boolean;
+  /** Replace an existing plugin.json and marketplace.json. */
+  force?: boolean;
+}
+
 /**
- * Scan `repoRoot` and emit .claude-plugin/manifest.json + marketplace.json.
+ * Scan `repoRoot` and emit .claude-plugin/plugin.json, marketplace.json and manifest.json.
  *
- * @param repoRoot - Absolute path to the repo to scan.
- * @param dry      - If true, compute + return results but do NOT write files.
- * @returns The emitted manifest, marketplace entry, and output directory path.
+ * @param repoRoot - Path to the repo to scan.
+ * @param options  - `true` (dry run, the old signature) or { dry, force }.
+ * @returns The inventory, the catalog envelope, the Claude Code files, and the output directory.
  */
-export function buildPlugin(repoRoot: string, dry = false): ScanResult {
+export function buildPlugin(repoRoot: string, options: boolean | BuildOptions = false): ScanResult {
+  const { dry = false, force = false } = typeof options === "boolean" ? { dry: options } : options;
   const absRoot = path.resolve(repoRoot);
   const startMs = Date.now();
 
@@ -355,7 +386,7 @@ export function buildPlugin(repoRoot: string, dry = false): ScanResult {
     version: repoVersion(absRoot),
     description: repoDescription(absRoot),
     emittedAt: now,
-    repoRoot: absRoot,
+    repoRoot: ".",
     skills,
     commands,
     hooks,
@@ -376,23 +407,38 @@ export function buildPlugin(repoRoot: string, dry = false): ScanResult {
   };
 
   const outputDir = path.join(absRoot, ".claude-plugin");
+  const derived = deriveClaudeFiles(absRoot, manifest.description);
+  warnings.push(...derived.warnings);
+  const written: string[] = [];
+  const kept: string[] = [];
 
   if (!dry) {
     fs.mkdirSync(outputDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(outputDir, "manifest.json"),
-      JSON.stringify(manifest, null, 2) + "\n",
-      "utf-8",
-    );
-    fs.writeFileSync(
-      path.join(outputDir, "marketplace.json"),
-      JSON.stringify(marketplace, null, 2) + "\n",
-      "utf-8",
-    );
+    fs.writeFileSync(path.join(outputDir, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n", "utf-8");
+    written.push("manifest.json");
+    for (const [file, body] of [["plugin.json", derived.plugin], ["marketplace.json", derived.marketplace]] as const) {
+      const target = path.join(outputDir, file);
+      if (fs.existsSync(target) && !force && !isPlugsmithLegacy(target)) {
+        kept.push(file);
+        continue;
+      }
+      fs.writeFileSync(target, JSON.stringify(body, null, 2) + "\n", "utf-8");
+      written.push(file);
+    }
   }
 
   // Observability: append a JSONL entry to logs/build-runs.jsonl
   logBuildRun({ repoRoot: absRoot, manifest, marketplace, dry, durationMs: Date.now() - startMs });
 
-  return { manifest, marketplace, outputDir };
+  return { manifest, marketplace, claude: { plugin: derived.plugin, marketplace: derived.marketplace, written, kept }, outputDir };
+}
+
+/** A marketplace.json in plugsmith's old catalog format (not Claude Code's) may always be replaced. */
+function isPlugsmithLegacy(file: string): boolean {
+  try {
+    const j = JSON.parse(fs.readFileSync(file, "utf-8")) as Record<string, unknown>;
+    return "manifest" in j && "skillCount" in j && !("owner" in j);
+  } catch {
+    return false;
+  }
 }

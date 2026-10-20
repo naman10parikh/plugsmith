@@ -1,0 +1,17 @@
+{
+  "name": "plugsmith",
+  "version": "0.1.0",
+  "description": "Turn any repository into a Claude Code plugin and marketplace.",
+  "contextFileName": "GEMINI.md",
+  "mcpServers": {
+    "plugsmith": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "-p",
+        "github:naman10parikh/plugsmith",
+        "plugsmith-mcp"
+      ]
+    }
+  }
+}

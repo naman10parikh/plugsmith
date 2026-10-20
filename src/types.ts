@@ -9,7 +9,7 @@
 export interface PluginSkill {
   /** Directory name, e.g. "deep-think" */
   name: string;
-  /** Absolute path to the skill root */
+  /** Repo-relative path to the skill folder, e.g. "./skills/deep-think" */
   path: string;
   /** First non-empty description line from SKILL.md, if present */
   description: string;
@@ -21,7 +21,7 @@ export interface PluginSkill {
 export interface PluginCommand {
   /** Command name without leading slash, e.g. "status" */
   name: string;
-  /** Absolute path to the .md file */
+  /** Repo-relative path to the .md file */
   path: string;
   /** First non-empty description line from the command file */
   description: string;
@@ -31,7 +31,7 @@ export interface PluginCommand {
 export interface PluginHook {
   /** Hook filename, e.g. "pre-compact-memory-flush.sh" */
   name: string;
-  /** Absolute path */
+  /** Repo-relative path */
   path: string;
   /** Inferred hook type from filename prefix */
   type:
@@ -66,7 +66,7 @@ export interface PluginManifest {
   description: string;
   /** ISO timestamp of when the manifest was emitted */
   emittedAt: string;
-  /** Absolute path to the repo root that was scanned */
+  /** The scanned repo root, always "." (paths in the inventory are relative to it) */
   repoRoot: string;
   /** Discovered skills */
   skills: PluginSkill[];

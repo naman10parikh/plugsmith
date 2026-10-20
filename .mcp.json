@@ -1,9 +1,8 @@
 {
   "mcpServers": {
     "plugsmith": {
-      "command": "node",
-      "args": ["dist/mcp-server.js"],
-      "description": "Plugsmith MCP server — exposes build_plugin and validate_manifest as tools"
+      "command": "npx",
+      "args": ["-y", "-p", "github:naman10parikh/plugsmith", "plugsmith-mcp"]
     }
   }
 }

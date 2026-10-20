@@ -1,0 +1,29 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test
+      - name: Install Claude Code (for claude plugin validate, which needs no login)
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Golden eval, checked against claude plugin validate
+        run: pnpm eval
+        env:
+          PLUGSMITH_REQUIRE_CLAUDE: "1"
+      - run: node scripts/mcp-smoke.mjs # plugsmith-mcp answers over real stdio
+      - name: plugsmith validates its own plugin
+        run: node dist/src/cli.js validate . --claude

@@ -1,0 +1,36 @@
+{
+  "name": "Plugsmith",
+  "description": "Turn any repository into a Claude Code plugin and marketplace.",
+  "url": "https://github.com/naman10parikh/plugsmith",
+  "version": "0.1.0",
+  "provider": {
+    "organization": "Naman Parikh",
+    "url": "https://github.com/naman10parikh"
+  },
+  "capabilities": {
+    "streaming": false
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "build-plugin",
+      "name": "build-plugin",
+      "description": "Turn a repo into a plugin with a one-plugin marketplace, or refresh plugin.json after adding skills or agents."
+    },
+    {
+      "id": "validate-plugin",
+      "name": "validate-plugin",
+      "description": "Check plugin.json and marketplace.json before anyone installs, with Claude Code's verdict and an optional clean room."
+    },
+    {
+      "id": "plugin-doctor",
+      "name": "plugin-doctor",
+      "description": "Diagnose a plugin that does not load or loads only partly, one fix per finding."
+    }
+  ]
+}

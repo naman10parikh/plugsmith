@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "plugsmith-dev": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["dist/src/mcp-server.js"],
+      "description": "This checkout's own build (run pnpm build first): build_plugin, validate_plugin, validate_manifest"
+    }
+  }
+}
