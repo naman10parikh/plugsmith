@@ -18,7 +18,7 @@ Verify command: `pnpm build && pnpm test && pnpm eval`
 
 Claim → Work → Close:
 
-1. Mark TODO `in_progress` + `owner: <you>` in TODOS.md.
+1. Mark TODO `in_progress` + `owner: <you>` in the maintainer's work queue (kept outside the public repository).
 2. Do the work.
 3. Run `pnpm build && pnpm test && pnpm eval` — RED blocks commit.
 4. Close TODO with evidence (test output line or artifact path).

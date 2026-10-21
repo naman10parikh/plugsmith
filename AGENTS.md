@@ -48,7 +48,7 @@ dsip.json        the self-improvement contract (honest level L2)
 
 ## Operating protocol
 
-1. **Claim a TODO** before starting (`in_progress` + owner) in TODOS.md.
+1. **Claim a TODO** before starting (`in_progress` + owner) in the maintainer's work queue (kept outside the public repository).
 2. **State your assumptions** before writing any code (Karpathy Principle 1).
 3. **Minimum diff** — touch only what the TODO requires. No speculative additions.
 4. **Verify:** `pnpm build && pnpm test && pnpm eval`. RED blocks commit.
